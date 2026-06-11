@@ -1,0 +1,10 @@
+{
+  "name": "com.unity.physics.custom",
+  "displayName": "Unity Physics Custom Authoring",
+  "version": "1.0.0",
+  "unity": "6000.0",
+  "description": "Custom Physics Authoring sample from Unity Physics - provides authoring components and editor tools for Unity Physics.",
+  "dependencies": {
+    "com.unity.physics": "1.0.0"
+  }
+}
