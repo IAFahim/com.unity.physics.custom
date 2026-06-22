@@ -1,6 +1,5 @@
 using Unity.Collections;
 using Unity.Mathematics;
-using UnityEngine;
 
 namespace Unity.Physics.Authoring
 {
@@ -17,7 +16,6 @@ namespace Unity.Physics.Authoring
         {
             var constraints = new FixedList512Bytes<Constraint>();
             if (math.any(LockLinearAxes))
-            {
                 constraints.Add(new Constraint
                 {
                     ConstrainedAxes = LockLinearAxes,
@@ -26,11 +24,9 @@ namespace Unity.Physics.Authoring
                     Max = 0,
                     SpringFrequency = Constraint.DefaultSpringFrequency,
                     DampingRatio = Constraint.DefaultDampingRatio,
-                    MaxImpulse = MaxImpulse,
+                    MaxImpulse = MaxImpulse
                 });
-            }
             if (math.any(LockAngularAxes))
-            {
                 constraints.Add(new Constraint
                 {
                     ConstrainedAxes = LockAngularAxes,
@@ -39,9 +35,8 @@ namespace Unity.Physics.Authoring
                     Max = 0,
                     SpringFrequency = Constraint.DefaultSpringFrequency,
                     DampingRatio = Constraint.DefaultDampingRatio,
-                    MaxImpulse = MaxImpulse,
+                    MaxImpulse = MaxImpulse
                 });
-            }
 
             var joint = new PhysicsJoint
             {
@@ -54,19 +49,19 @@ namespace Unity.Physics.Authoring
         }
     }
 
-    class LimitDOFJointBaker : JointBaker<LimitDOFJoint>
+    internal class LimitDOFJointBaker : JointBaker<LimitDOFJoint>
     {
         public override void Bake(LimitDOFJoint authoring)
         {
             if (!math.any(authoring.LockLinearAxes) && !math.any(authoring.LockAngularAxes))
                 return;
 
-            RigidTransform bFromA = math.mul(math.inverse(authoring.worldFromB), authoring.worldFromA);
-            PhysicsJoint physicsJoint = authoring.CreateLimitDOFJoint(bFromA);
+            var bFromA = math.mul(math.inverse(authoring.worldFromB), authoring.worldFromA);
+            var physicsJoint = authoring.CreateLimitDOFJoint(bFromA);
 
             var constraintBodyPair = GetConstrainedBodyPair(authoring);
 
-            uint worldIndex = GetWorldIndexFromBaseJoint(authoring);
+            var worldIndex = GetWorldIndexFromBaseJoint(authoring);
             CreateJointEntity(worldIndex, constraintBodyPair, authoring.SolverType, physicsJoint);
         }
     }

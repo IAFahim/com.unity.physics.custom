@@ -18,24 +18,21 @@ namespace Unity.Physics.Authoring
         public MassDistribution CustomMassDistribution;
     }
 
-    class PhysicsBodyAuthoringBaker : BasePhysicsBaker<PhysicsBodyAuthoring>
+    internal class PhysicsBodyAuthoringBaker : BasePhysicsBaker<PhysicsBodyAuthoring>
     {
-        internal List<UnityEngine.Collider> colliderComponents = new List<UnityEngine.Collider>();
-        internal List<PhysicsShapeAuthoring> physicsShapeComponents = new List<PhysicsShapeAuthoring>();
+        internal List<UnityEngine.Collider> colliderComponents = new();
+        internal List<PhysicsShapeAuthoring> physicsShapeComponents = new();
 
         public override void Bake(PhysicsBodyAuthoring authoring)
         {
             // Priority is to Legacy Components. Ignore if baked by Legacy.
-            if (GetComponent<Rigidbody>()  || GetComponent<UnityEngine.Collider>())
-            {
-                return;
-            }
+            if (GetComponent<Rigidbody>() || GetComponent<UnityEngine.Collider>()) return;
 
             var entity = GetEntity(TransformUsageFlags.Dynamic);
             // To process later in the Baking System
             AddComponent(entity, new PhysicsBodyAuthoringData
             {
-                IsDynamic = (authoring.MotionType == BodyMotionType.Dynamic),
+                IsDynamic = authoring.MotionType == BodyMotionType.Dynamic,
                 Mass = authoring.Mass,
                 OverrideDefaultMassDistribution = authoring.OverrideDefaultMassDistribution,
                 CustomMassDistribution = authoring.CustomMassDistribution
@@ -61,11 +58,11 @@ namespace Unity.Physics.Authoring
             GetComponentsInChildren(physicsShapeComponents);
             if (colliderComponents.Count > 0 || physicsShapeComponents.Count > 0)
             {
-                AddComponent(entity, new PhysicsCompoundData()
+                AddComponent(entity, new PhysicsCompoundData
                 {
                     AssociateBlobToBody = false,
                     ConvertedBodyEntityId = authoring.GetEntityId(),
-                    Hash = default,
+                    Hash = default
                 });
                 AddComponent<PhysicsRootBaked>(entity);
                 AddComponent<PhysicsCollider>(entity);
@@ -76,9 +73,10 @@ namespace Unity.Physics.Authoring
 
             var massProperties = MassProperties.UnitSphere;
 
-            AddComponent(entity, authoring.MotionType == BodyMotionType.Dynamic ?
-                PhysicsMass.CreateDynamic(massProperties, authoring.Mass) :
-                PhysicsMass.CreateKinematic(massProperties));
+            AddComponent(entity,
+                authoring.MotionType == BodyMotionType.Dynamic
+                    ? PhysicsMass.CreateDynamic(massProperties, authoring.Mass)
+                    : PhysicsMass.CreateKinematic(massProperties));
 
             var physicsVelocity = new PhysicsVelocity
             {
@@ -96,12 +94,10 @@ namespace Unity.Physics.Authoring
                     Angular = authoring.AngularDamping
                 });
                 if (authoring.GravityFactor != 1)
-                {
                     AddComponent(entity, new PhysicsGravityFactor
                     {
                         Value = authoring.GravityFactor
                     });
-                }
             }
             else if (authoring.MotionType == BodyMotionType.Kinematic)
             {
@@ -115,13 +111,11 @@ namespace Unity.Physics.Authoring
             {
                 AddComponent(entity, new PhysicsGraphicalSmoothing());
                 if (authoring.Smoothing == BodySmoothing.Interpolation)
-                {
                     AddComponent(entity, new PhysicsGraphicalInterpolationBuffer
                     {
                         PreviousTransform = Math.DecomposeRigidBodyTransform(bodyTransform.localToWorldMatrix),
-                        PreviousVelocity = physicsVelocity,
+                        PreviousVelocity = physicsVelocity
                     });
-                }
             }
         }
     }
@@ -137,24 +131,21 @@ namespace Unity.Physics.Authoring
             var entityManager = state.EntityManager;
 
             // Fill in the mass properties based on custom mass properties for bodies without colliders
-            foreach (var(physicsMass, bodyData, entity) in
+            foreach (var (physicsMass, bodyData, entity) in
                      SystemAPI.Query<RefRW<PhysicsMass>, RefRO<PhysicsBodyAuthoringData>>()
                          .WithNone<PhysicsCollider>()
                          .WithEntityAccess()
                          .WithOptions(EntityQueryOptions.IncludePrefab | EntityQueryOptions.IncludeDisabledEntities))
-            {
-                physicsMass.ValueRW = CreatePhysicsMass(entityManager, entity, bodyData.ValueRO, MassProperties.UnitSphere);
-            }
+                physicsMass.ValueRW =
+                    CreatePhysicsMass(entityManager, entity, bodyData.ValueRO, MassProperties.UnitSphere);
 
             // Fill in the mass properties based on collider and custom mass properties if provided.
-            foreach (var(physicsMass, bodyData, collider, entity) in
+            foreach (var (physicsMass, bodyData, collider, entity) in
                      SystemAPI.Query<RefRW<PhysicsMass>, RefRO<PhysicsBodyAuthoringData>, RefRO<PhysicsCollider>>()
                          .WithEntityAccess()
                          .WithOptions(EntityQueryOptions.IncludePrefab | EntityQueryOptions.IncludeDisabledEntities))
-            {
                 physicsMass.ValueRW = CreatePhysicsMass(entityManager, entity, bodyData.ValueRO,
                     collider.ValueRO.MassProperties, true);
-            }
         }
 
         private PhysicsMass CreatePhysicsMass(EntityManager entityManager, in Entity entity,
@@ -178,18 +169,17 @@ namespace Unity.Physics.Authoring
             {
                 massProperties.MassDistribution = inBodyData.CustomMassDistribution;
                 if (hasCollider)
-                {
                     // Increase the angular expansion factor to account for the shift in center of mass
                     massProperties.AngularExpansionFactor += math.length(massProperties.MassDistribution.Transform.pos -
-                        inBodyData.CustomMassDistribution.Transform.pos);
-                }
+                                                                         inBodyData.CustomMassDistribution.Transform
+                                                                             .pos);
             }
 
             // Create the physics mass properties. Among others, this scales the unit mass inertia tensor
             // by the scalar mass of the rigid body.
-            var physicsMass = inBodyData.IsDynamic ?
-                PhysicsMass.CreateDynamic(massProperties, inBodyData.Mass) :
-                PhysicsMass.CreateKinematic(massProperties);
+            var physicsMass = inBodyData.IsDynamic
+                ? PhysicsMass.CreateDynamic(massProperties, inBodyData.Mass)
+                : PhysicsMass.CreateKinematic(massProperties);
 
             // Now, apply inverse scale to the final, baked physics mass properties in order to prevent invalid simulated mass properties
             // caused by runtime scaling of the mass properties later on while building the physics world.
